@@ -59,6 +59,9 @@ def developer_page():
             st.write(ticket[1])
             st.write(ticket[2])
             remark=get_details_for_dev_page(ticket[0],get_by_name(st.session_state.name)[0])
+            if remark is None:
+                update_ticket(ticket[0],"in-progress")
+                st.rerun()
             st.write(f"rating: {remark[0]}")
             st.write(f"suggestions:{remark[1]}")
             if st.button("Update",key=f"tb3_{ticket[0]}"):
