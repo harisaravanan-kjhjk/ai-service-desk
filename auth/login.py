@@ -11,7 +11,7 @@ def login_page():
     username = st.text_input(
         "Username",
         key="login_username"
-    )
+    ).strip()
 
     password = st.text_input(
         "Password",
