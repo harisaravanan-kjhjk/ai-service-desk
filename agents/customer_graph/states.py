@@ -19,3 +19,4 @@ class CustomerState(TypedDict):
     error_code: str
     steps_tried: list[str]
     fail_attempts:int
+    ticket_id:int

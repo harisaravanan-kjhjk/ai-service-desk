@@ -34,11 +34,18 @@ def triage_ticket(title, description):
     database redesign, security redesign, or major systemic changes.
 
     Return ONLY valid JSON:
-
+    (example)
     {{
         "category": "Authentication",
         "level": 1
     }}
+    If you cannot determine the category with confidence,
+return:
+
+{{
+    "category": "Other",
+    "level": 1
+}}
     """
 
     return ask_llm(prompt)

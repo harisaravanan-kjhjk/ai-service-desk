@@ -1,4 +1,4 @@
-def create_initial_state():
+def create_initial_state(user_id):
     return {
         "messages": [],
         "title": "",
@@ -13,5 +13,7 @@ def create_initial_state():
         "operating_system": "",
         "error_code": "",
         "steps_tried": [],
-        "fail_attempts":0
+        "fail_attempts":0,
+        "raw_response":"",
+        "user":user_id
     }

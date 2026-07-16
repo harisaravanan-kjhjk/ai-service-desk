@@ -17,7 +17,12 @@ builder.add_node(
 )
 
 builder.add_node(
-    "update_state",
+    "add_to_queue",
+    add_to_queue
+)
+
+builder.add_node(
+    "update_status",
     update_status
 )
 
@@ -39,6 +44,21 @@ builder.add_node(
 builder.add_node(
     "failure_handler",
     failure_handler
+)
+
+builder.add_node(
+    "triage_parse",
+    triage_parse
+)
+
+builder.add_node(
+    "fall_back_triage",
+    fall_back_triage
+)
+
+builder.add_node(
+    "failure_handle_triage",
+    failure_handle_triage
 )
 
 builder.set_entry_point(
@@ -82,7 +102,29 @@ builder.add_conditional_edges(
 
 builder.add_edge(
     "triage",
+    "triage_parse"
+)
+
+builder.add_conditional_edges(
+    "triage_parse",
+    check_triage_parse_status,
+    {
+        "success":"add_to_queue",
+        "repair":"fall_back_triage",
+        "failure":"failure_handle_triage"
+    }
+)
+
+builder.add_edge(
+    "add_to_queue",
     "__end__"
 )
+
+builder.add_edge(
+    "fall_back_triage",
+    "triage_parse"
+)
+builder.add_edge("failure_handle_triage",
+            "__end__")
 
 graph = builder.compile()

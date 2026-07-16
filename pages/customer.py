@@ -1,20 +1,14 @@
-import json
-import time
-
+from agents.customer_graph.graph import graph
 import streamlit as st
-
-from agents.l1_agent import ask_l1_agent
-from agents.prompt_repair_llm import fall_back_llm
-from agents.triage_ticket import triage_ticket
-
+from agents.customer_graph.create_initial_state import create_initial_state
 from database.queue_repository import *
 from database.ticket_repository import *
 from database.user_repository import *
 
-from utilities.logout import show_logout_sidebar
 
 
 def customer_page():
+    st.write(debug_queue())
     st.title("Customer Home Page")
 
     tab1, tab2 = st.tabs([
@@ -29,13 +23,20 @@ def customer_page():
 
         st.subheader("AI Assistant")
 
-        if st.session_state.messages == []:
-            st.session_state.messages = [{
+        if "customer_state" not in st.session_state:
+
+            st.session_state.customer_state = create_initial_state(
+                get_by_name(st.session_state.name)[0]
+            )
+
+            st.session_state.customer_state["messages"].append({
                 "role": "AI",
                 "message": "Describe your problem."
-            }]
+            })
 
-        for msg in st.session_state.messages:
+        state = st.session_state.customer_state
+
+        for msg in state["messages"]:
             with st.chat_message(msg["role"]):
                 st.write(msg["message"])
 
@@ -43,84 +44,43 @@ def customer_page():
 
         if prompt:
 
-            st.session_state.messages.append({
+            state["messages"].append({
                 "role": "user",
                 "message": prompt
             })
 
-            with st.chat_message("AI"):
-                with st.spinner("Thinking..."):
-                    data = ask_l1_agent(
-                        st.session_state.messages[-8:]
-                    )
+            with st.spinner("Thinking..."):
+                state = graph.invoke(state)
 
-            try:
+            st.session_state.customer_state = state
 
-                content = json.loads(data)
+            if state["response"]:
 
-                title = content["title"]
-                description = content["inference"]
+                state["messages"].append({
+                    "role": "AI",
+                    "message": state["response"]
+                })
 
-                if not content["ticket_ready"]:
+            if state["ticket_ready"]:
 
-                    st.session_state.messages.append({
-                        "role": "AI",
-                        "message": content["next_question"]
-                    })
+                if state["resolution_status"] == "resolved":
+
+                    st.success("Issue solved successfully.")
 
                 else:
 
-                    ticket_id = put_tickets(
-                        title,
-                        description,
-                        get_by_name(st.session_state.name)[0],
-                        "AI"
+                    st.success(
+                        "Ticket created successfully and added to the queue."
                     )
 
-                    st.session_state.messages = []
+                st.session_state.customer_state = create_initial_state(
+                    get_by_name(st.session_state.name)[0]
+                )
 
-                    if content["resolution_status"] == "resolved":
-
-                        update_ticket(ticket_id, "resolved")
-
-                        st.success(
-                            "Issue solved successfully."
-                        )
-
-                    else:
-
-                        queue_id = put_queue(ticket_id, 1)
-
-                        with st.chat_message("AI"):
-                            with st.spinner("Triaging ticket..."):
-
-                                try:
-
-                                    ticket = get_tickets(ticket_id)
-
-                                    triage = json.loads(
-                                        triage_ticket(
-                                            ticket[1],
-                                            ticket[2]
-                                        )
-                                    )
-
-                                    assign_level_category_queue(
-                                        queue_id,
-                                        triage["level"],
-                                        triage["category"]
-                                    )
-
-                                except Exception as e:
-                                    st.error(e)
-                                    time.sleep(10)
-
-                        st.success("Ticket created successfully.")
-
-            except Exception:
-
-                # Fallback parser if the LLM returns malformed JSON
-                st.write(data)
+                st.session_state.customer_state["messages"].append({
+                    "role": "AI",
+                    "message": "Describe your problem."
+                })
 
             st.rerun()
 

@@ -1,32 +1,60 @@
 from services.ai_service import ask_llm
 
 
-def json_repair_agent(raw_response):
+def json_repair_agent(raw_response, state):
+
+    memory_context = f"""
+Current Known Information
+
+Summary:
+{state.get("summary")}
+
+Application:
+{state.get("application")}
+
+Operating System:
+{state.get("operating_system")}
+
+Error Code:
+{state.get("error_code")}
+
+Steps Already Tried:
+{state.get("steps_tried")}
+"""
 
     prompt = f"""
 You are a JSON repair agent for an IT Service Desk workflow.
 
-Your only task is to repair the given raw response and convert it into the required JSON structure.
+Your ONLY responsibility is to repair malformed JSON.
+
+Do NOT answer the user's question.
+Do NOT troubleshoot the issue.
+Do NOT invent new information.
+
+Current Known Information:
+
+{memory_context}
 
 Rules:
 
 1. Return ONLY valid JSON.
 2. Never return markdown.
 3. Never explain anything.
-4. Do not solve the user's issue.
-5. Do not add information that is not present.
-6. Preserve available information from the raw response.
-7. Fix:
-   - invalid JSON syntax
+4. Repair malformed JSON syntax.
+5. Preserve every piece of information already present in the raw response.
+6. If information is missing from the raw response but exists in the Current Known Information, preserve the existing value.
+7. Only use null when the value is unknown in both the raw response and the Current Known Information.
+8. Fix:
    - missing quotes
-   - wrong brackets
+   - missing commas
    - trailing commas
-   - missing keys
-   - wrong data types
-8. If a value cannot be found, use null.
-9. steps_tried must always be a list.
-10. ticket_ready must always be boolean.
-11. fail_attempts must always be 0.
+   - incorrect brackets
+   - invalid JSON syntax
+   - incorrect data types
+9. ticket_ready must always be a boolean.
+10. resolution_status must always be either "resolved" or "unresolved".
+11. steps_tried must always be a JSON array.
+12. Return every required field exactly once.
 
 Required JSON structure:
 
@@ -38,16 +66,11 @@ Required JSON structure:
     "resolution_status": "unresolved",
     "response": null,
 
-    "level": null,
-    "category": null,
-
     "summary": null,
     "application": null,
     "operating_system": null,
     "error_code": null,
-    "steps_tried": [],
-
-    "fail_attempts": 0
+    "steps_tried": []
 }}
 
 Raw Response:
@@ -56,7 +79,7 @@ Raw Response:
 {raw_response}
 -------------------
 
-Return only the corrected JSON.
+Return ONLY the repaired JSON.
 """
 
     return ask_llm(prompt)
